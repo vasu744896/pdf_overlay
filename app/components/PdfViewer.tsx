@@ -1,10 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { PdfCanvas } from "./PdfCanvas";
 import { PdfTextOverlay } from "./PdfTextOverlay";
 import { extractParagraphs, Paragraph } from "../utils/extractParagraphs";
 import { PdfContentBlock } from "../types/pdf";
+
+/* =========================
+   HELPER: crop image region
+   ========================= */
+function cropRegion(
+  source: HTMLCanvasElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(source, x, y, width, height, 0, 0, width, height);
+
+  return canvas.toDataURL("image/png");
+}
 
 type Props = {
   onExtracted: (blocks: PdfContentBlock[]) => void;
@@ -15,27 +35,81 @@ export default function PdfViewer({ onExtracted }: Props) {
   const [pageSize, setPageSize] = useState({ width: 0, height: 0 });
 
   async function handleRendered({ page, viewport, scale }: any) {
-    // 1️⃣ Extract raw text
+    /* =========================
+       TEXT EXTRACTION
+       ========================= */
     const textContent = await page.getTextContent();
-
-    // 2️⃣ Group into paragraphs (existing logic)
     const lines = extractParagraphs(textContent, viewport, scale);
 
-    // 3️⃣ Update overlay state (LEFT SIDE)
     setParagraphs(lines);
     setPageSize({
       width: viewport.width,
       height: viewport.height,
     });
 
-    // 4️⃣ Convert to RIGHT PANEL format
-    const blocks: PdfContentBlock[] = lines.map((p) => ({
-      type: "paragraph",
-      page: page.pageNumber,
-      text: p.text,
-    }));
+    const blocks: PdfContentBlock[] = [];
 
-    // 5️⃣ Send extracted data UP
+    /* =========================
+       RENDER PAGE TO CANVAS
+       ========================= */
+    const imageViewport = page.getViewport({ scale: 2 });
+    const pageCanvas = document.createElement("canvas");
+    pageCanvas.width = imageViewport.width;
+    pageCanvas.height = imageViewport.height;
+
+    const ctx = pageCanvas.getContext("2d");
+    if (!ctx) return;
+
+    await page.render({
+      canvasContext: ctx,
+      viewport: imageViewport,
+    }).promise;
+
+    /* =========================
+       LOGO (top-left)
+       ========================= */
+    blocks.push({
+      type: "image",
+      page: page.pageNumber,
+      src: cropRegion(pageCanvas, 20, 20, 160, 160),
+      width: 160,
+      height: 160,
+    });
+
+    /* =========================
+       PARAGRAPHS (top section)
+       ========================= */
+    lines.forEach((p, index) => {
+      blocks.push({
+        type: "paragraph",
+        page: page.pageNumber,
+        text: p.text,
+      });
+
+      /* =========================
+         INSERT WHATSAPP ICON
+         after first few lines
+         ========================= */
+      if (index === 3) {
+        blocks.push({
+          type: "image",
+          page: page.pageNumber,
+          src: cropRegion(
+            pageCanvas,
+            pageCanvas.width - 140,
+            90,
+            110,
+            110
+          ),
+          width: 110,
+          height: 110,
+        });
+      }
+    });
+
+    /* =========================
+       SEND TO RIGHT PANEL
+       ========================= */
     onExtracted(blocks);
   }
 

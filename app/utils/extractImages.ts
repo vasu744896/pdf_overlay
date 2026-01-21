@@ -1,17 +1,16 @@
 import type { PdfImage } from "../types/pdf";
+import pdfjs from "../lib/pdfWorker";
 
 export async function extractImages(page: any): Promise<PdfImage[]> {
   const ops = await page.getOperatorList();
   const images: PdfImage[] = [];
 
   for (let i = 0; i < ops.fnArray.length; i++) {
-    if (ops.fnArray[i] === page.commonObjs?.OPS?.paintImageXObject ||
-        ops.fnArray[i] === 84 /* fallback */) {
-
+    if (ops.fnArray[i] === pdfjs.OPS.paintImageXObject) {
       const imgName = ops.argsArray[i][0];
       const img = await page.objs.get(imgName);
 
-      if (!img?.data) continue;
+      if (!img || !img.data) continue;
 
       const canvas = document.createElement("canvas");
       canvas.width = img.width;
@@ -27,7 +26,7 @@ export async function extractImages(page: any): Promise<PdfImage[]> {
       images.push({
         type: "image",
         page: page.pageNumber,
-        src: canvas.toDataURL(),
+        src: canvas.toDataURL("image/png"),
         width: img.width,
         height: img.height,
       });

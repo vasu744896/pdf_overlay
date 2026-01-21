@@ -8,11 +8,11 @@ export default function RightPanel({
   blocks: PdfContentBlock[];
 }) {
   return (
-    <div style={{ padding: 12 }}>
+    <div className="p-3 space-y-4">
       {blocks.map((b, i) => {
         if (b.type === "paragraph") {
           return (
-            <p key={i}>
+            <p key={i} className="text-sm leading-relaxed">
               <strong>Page {b.page}:</strong> {b.text}
             </p>
           );
@@ -20,11 +20,18 @@ export default function RightPanel({
 
         if (b.type === "image") {
           return (
-            <div key={i}>
-              <strong>Page {b.page}</strong>
+            <div key={i} className="border rounded p-2">
+              <div className="text-xs mb-1 text-gray-600">
+                Image – Page {b.page}
+              </div>
               <img
                 src={b.src}
-                style={{ maxWidth: "100%", marginTop: 8 }}
+                alt={`Page ${b.page}`}
+                style={{
+                  maxWidth: "100%",
+                  height: "auto",
+                  borderRadius: 4,
+                }}
               />
             </div>
           );
