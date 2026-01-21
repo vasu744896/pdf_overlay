@@ -1,15 +1,24 @@
-export type PdfImage = {
-  type: "image";
-  page: number;
-  src: string;      // base64
-  width: number;
-  height: number;
-};
-
-export type PdfParagraphBlock = {
-  type: "paragraph";
+export type PdfTextBlock = {
+  type: "text";
   page: number;
   text: string;
 };
 
-export type PdfContentBlock = PdfParagraphBlock | PdfImage;
+export type PdfPictureBlock = {
+  type: "picture";
+  page: number;
+  src: string;
+  width: number;
+  height: number;
+};
+
+export type PdfListGroupBlock = {
+  type: "listgroup";
+  page: number;
+  items: string[];
+};
+
+export type PdfContentBlock =
+  | PdfTextBlock
+  | PdfPictureBlock
+  | PdfListGroupBlock;

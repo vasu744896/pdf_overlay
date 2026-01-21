@@ -1,26 +1,16 @@
 export function cropRegion(
-  sourceCanvas: HTMLCanvasElement,
+  source: HTMLCanvasElement,
   x: number,
   y: number,
-  width: number,
-  height: number
+  w: number,
+  h: number
 ): string {
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = w;
+  canvas.height = h;
 
   const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(
-    sourceCanvas,
-    x,
-    y,
-    width,
-    height,
-    0,
-    0,
-    width,
-    height
-  );
+  ctx.drawImage(source, x, y, w, h, 0, 0, w, h);
 
   return canvas.toDataURL("image/png");
 }

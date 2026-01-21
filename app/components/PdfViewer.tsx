@@ -5,26 +5,10 @@ import { PdfCanvas } from "./PdfCanvas";
 import { PdfTextOverlay } from "./PdfTextOverlay";
 import { extractParagraphs, Paragraph } from "../utils/extractParagraphs";
 import { PdfContentBlock } from "../types/pdf";
-
-/* =========================
-   HELPER: crop image region
-   ========================= */
-function cropRegion(
-  source: HTMLCanvasElement,
-  x: number,
-  y: number,
-  width: number,
-  height: number
-): string {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(source, x, y, width, height, 0, 0, width, height);
-
-  return canvas.toDataURL("image/png");
-}
+import { getTextBoxes } from "../utils/getTextBounds";
+import { findAnchorBox } from "../utils/findAnchorBox";
+import { cropRelative } from "../utils/cropRelative";
+import { buildListGroups } from "../utils/buildListGroups";
 
 type Props = {
   onExtracted: (blocks: PdfContentBlock[]) => void;
@@ -39,15 +23,11 @@ export default function PdfViewer({ onExtracted }: Props) {
        TEXT EXTRACTION
        ========================= */
     const textContent = await page.getTextContent();
+    const items = textContent.items;
+
     const lines = extractParagraphs(textContent, viewport, scale);
-
     setParagraphs(lines);
-    setPageSize({
-      width: viewport.width,
-      height: viewport.height,
-    });
-
-    const blocks: PdfContentBlock[] = [];
+    setPageSize({ width: viewport.width, height: viewport.height });
 
     /* =========================
        RENDER PAGE TO CANVAS
@@ -66,63 +46,79 @@ export default function PdfViewer({ onExtracted }: Props) {
     }).promise;
 
     /* =========================
-       LOGO (top-left)
+       TEXT BOXES (GEOMETRY)
        ========================= */
-    blocks.push({
-      type: "image",
-      page: page.pageNumber,
-      src: cropRegion(pageCanvas, 20, 20, 160, 160),
-      width: 160,
-      height: 160,
-    });
+    const boxes = getTextBoxes(items, viewport.height, scale);
 
     /* =========================
-       PARAGRAPHS (top section)
+       FIND ANCHORS (NO HARDCODE)
        ========================= */
-    lines.forEach((p, index) => {
-      blocks.push({
-        type: "paragraph",
+    const header = findAnchorBox(boxes, (t) =>
+      t.toLowerCase().includes("interview")
+    );
+    const phone = findAnchorBox(boxes, (t) => t.includes("+91"));
+    const mail = findAnchorBox(boxes, (t) => t.includes("@"));
+
+    /* =========================
+       BUILD RAW BLOCKS
+       ========================= */
+    const rawBlocks: PdfContentBlock[] = [];
+
+    // Logo near header
+    if (header) {
+      rawBlocks.push({
+        type: "picture",
+        page: page.pageNumber,
+        src: cropRelative(pageCanvas, header, "left"),
+        width: 80,
+        height: 80,
+      });
+    }
+
+    // Text blocks (document flow)
+    lines.forEach((p) => {
+      rawBlocks.push({
+        type: "text",
         page: page.pageNumber,
         text: p.text,
       });
-
-      /* =========================
-         INSERT WHATSAPP ICON
-         after first few lines
-         ========================= */
-      if (index === 3) {
-        blocks.push({
-          type: "image",
-          page: page.pageNumber,
-          src: cropRegion(
-            pageCanvas,
-            pageCanvas.width - 140,
-            90,
-            110,
-            110
-          ),
-          width: 110,
-          height: 110,
-        });
-      }
     });
+
+    // Phone icon
+    if (phone) {
+      rawBlocks.push({
+        type: "picture",
+        page: page.pageNumber,
+        src: cropRelative(pageCanvas, phone, "left"),
+        width: 60,
+        height: 60,
+      });
+    }
+
+    // Mail icon
+    if (mail) {
+      rawBlocks.push({
+        type: "picture",
+        page: page.pageNumber,
+        src: cropRelative(pageCanvas, mail, "left"),
+        width: 60,
+        height: 60,
+      });
+    }
+
+    /* =========================
+       AUTO-DETECT LISTGROUP
+       ========================= */
+    const finalBlocks = buildListGroups(rawBlocks);
 
     /* =========================
        SEND TO RIGHT PANEL
        ========================= */
-    onExtracted(blocks);
+    onExtracted(finalBlocks);
   }
 
   return (
-    <div
-      style={{
-        height: "80vh",
-        overflowY: "auto",
-        overflowX: "hidden",
-        background: "#ffffff",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
-      }}
-    >
+    <div style={{ height: "80vh", overflowY: "auto" }}>
       <div
         className="relative inline-block"
         style={{
@@ -130,14 +126,8 @@ export default function PdfViewer({ onExtracted }: Props) {
           height: pageSize.height,
         }}
       >
-        {/* PDF CANVAS */}
         <PdfCanvas onRendered={handleRendered} />
-
-        {/* TEXT OVERLAY */}
-        <PdfTextOverlay
-          paragraphs={paragraphs}
-          pageSize={pageSize}
-        />
+        <PdfTextOverlay paragraphs={paragraphs} pageSize={pageSize} />
       </div>
     </div>
   );

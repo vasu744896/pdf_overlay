@@ -2,42 +2,51 @@
 
 import { PdfContentBlock } from "../types/pdf";
 
-export default function RightPanel({
-  blocks,
-}: {
+type RightPanelProps = {
   blocks: PdfContentBlock[];
-}) {
-  return (
-    <div className="p-3 space-y-4">
-      {blocks.map((b, i) => {
-        if (b.type === "paragraph") {
-          return (
-            <p key={i} className="text-sm leading-relaxed">
-              <strong>Page {b.page}:</strong> {b.text}
-            </p>
-          );
-        }
+};
 
-        if (b.type === "image") {
+export default function RightPanel({ blocks }: RightPanelProps) {
+  return (
+    <div className="p-3 space-y-3 overflow-y-auto">
+      {blocks.map((block, index) => {
+        if (block.type === "picture") {
           return (
-            <div key={i} className="border rounded p-2">
-              <div className="text-xs mb-1 text-gray-600">
-                Image – Page {b.page}
-              </div>
+            <div
+              key={index}
+              className="border rounded p-2 flex justify-center bg-white"
+            >
               <img
-                src={b.src}
-                alt={`Page ${b.page}`}
+                src={block.src}
+                alt="Extracted visual"
                 style={{
-                  maxWidth: "100%",
-                  height: "auto",
-                  borderRadius: 4,
+                  maxWidth: block.width,
+                  maxHeight: block.height,
+                  objectFit: "contain",
                 }}
               />
             </div>
           );
         }
 
-        return null;
+        if (block.type === "listgroup") {
+          return (
+            <div key={index} className="bg-teal-50 p-3 rounded">
+              {block.items.map((item, i) => (
+                <div key={i} className="text-sm leading-relaxed">
+                  {item}
+                </div>
+              ))}
+            </div>
+          );
+        }
+
+        // TEXT block
+        return (
+          <p key={index} className="text-sm leading-relaxed">
+            {block.text}
+          </p>
+        );
       })}
     </div>
   );
