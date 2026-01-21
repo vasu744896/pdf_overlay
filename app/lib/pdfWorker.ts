@@ -1,9 +1,9 @@
-// @ts-ignore
-import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import * as pdfjs from "pdfjs-dist";
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
+// ✅ REQUIRED for pdf.js v4 + Turbopack
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+
+// ✅ TELL pdf.js this is an ES module
+(pdfjs as any).GlobalWorkerOptions.workerType = "module";
 
 export default pdfjs;
