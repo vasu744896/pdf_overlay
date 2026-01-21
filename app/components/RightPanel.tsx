@@ -1,11 +1,37 @@
 "use client";
 
-export default function RightPanel() {
+import { PdfContentBlock } from "../types/pdf";
+
+export default function RightPanel({
+  blocks,
+}: {
+  blocks: PdfContentBlock[];
+}) {
   return (
-    <div className="p-3 text-sm text-gray-600">
-      PDF text overlay enabled.
-      <br />
-      Select text directly on the PDF.
+    <div style={{ padding: 12 }}>
+      {blocks.map((b, i) => {
+        if (b.type === "paragraph") {
+          return (
+            <p key={i}>
+              <strong>Page {b.page}:</strong> {b.text}
+            </p>
+          );
+        }
+
+        if (b.type === "image") {
+          return (
+            <div key={i}>
+              <strong>Page {b.page}</strong>
+              <img
+                src={b.src}
+                style={{ maxWidth: "100%", marginTop: 8 }}
+              />
+            </div>
+          );
+        }
+
+        return null;
+      })}
     </div>
   );
 }
